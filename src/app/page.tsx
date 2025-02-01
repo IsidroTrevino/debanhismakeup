@@ -62,7 +62,6 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate date
     const correctDate = '2024-05-03';
     if (date !== correctDate) {
       setError('MAL GEI');
@@ -75,7 +74,6 @@ export default function Home() {
     }
       
     try {
-      // Upload file
       const fileUpload = await storage.createFile(
         process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
         ID.unique(),
@@ -100,6 +98,8 @@ export default function Home() {
       setTitle('');
       setLink('');
       setFile(null);
+      setDate('');
+      setError('');
       
       setIsDialogOpen(false);
     } catch (error) {
