@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TrashIcon } from 'lucide-react';
+import { Loader, TrashIcon, MoreVertical } from 'lucide-react';
+
 
 interface Product {
   $id: string;
   title: string;
   productURL: string;
   imageId: string;
+  priority: 'Alta' | 'no tanta' | 'poquillo';
 }
 
 type AppwriteUser = Models.User<Models.Preferences>;
@@ -24,7 +26,9 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [user, setUser] = useState<AppwriteUser | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-
+  const [priority, setPriority] = useState<'Alta' | 'no tanta' | 'poquillo'>('Alta');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const client = new Client()
     .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
@@ -62,6 +66,9 @@ export default function Home() {
 
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDate(e.target.value);
@@ -71,32 +78,37 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const correctDate = '2024-05-03';
-    if (date !== correctDate) {
-      setError('MAL GEI');
-      return;
-    }
-    e.preventDefault();
-      
-    if (!user) {
-      await login();
-    }
-      
+    setIsSubmitting(true);
+
     try {
+      const correctDate = '2024-05-03';
+      if (date !== correctDate) {
+        setError('MAL GEI');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!file) {
+        setError('Por favor selecciona una imagen');
+        setIsSubmitting(false);
+        return;
+      }
+
       const fileUpload = await storage.createFile(
         process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
         ID.unique(),
-        file!
+        file
       );
   
-      const document = await databases.createDocument(
+      await databases.createDocument(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
         process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
         ID.unique(),
         {
-          title: title,
-          link: link,
-          imageId: fileUpload.$id
+          title,
+          link,
+          imageId: fileUpload.$id,
+          priority
         }
       );
 
@@ -113,7 +125,43 @@ export default function Home() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error creating document:', error);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+  
+    try {
+      await databases.updateDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
+        editingProduct!.$id,
+        {
+          title,
+          link,
+          priority
+        }
+      );
+  
+      setIsEditDialogOpen(false);
+      setEditingProduct(null);
+      await fetchProducts();
+    } catch (error) {
+      console.error('Error updating product:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setTitle(product.title);
+    setLink(product.productURL);
+    setPriority(product.priority);
+    setIsEditDialogOpen(true);
   };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +192,8 @@ export default function Home() {
         $id: doc.$id,
         title: doc.title as string,
         productURL: doc.link as string,
-        imageId: doc.imageId as string
+        imageId: doc.imageId as string,
+        priority: doc.priority as 'Alta' | 'no tanta' | 'poquillo'
       })));
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -208,6 +257,19 @@ export default function Home() {
                   accept="image/*"
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="priority">Prioridad</Label>
+                <select 
+                  id="priority"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as 'Alta' | 'no tanta' | 'poquillo')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+                >
+                  <option value="Alta">Alta</option>
+                  <option value="no tanta">No tanta</option>
+                  <option value="poquillo">Poquillo</option>
+                </select>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="date">Fecha de nuestro casamiento oficial (PARA COMPROBAR QUE SI SOS VOS)</Label>
@@ -221,11 +283,64 @@ export default function Home() {
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
             <DialogFooter className='pt-4'>
-              <Button type="submit">Pon tu productito!!!</Button>
+              <Button type="submit">
+              {isSubmitting ? (
+                <Loader size={20} className='animate-spin text-muted-foreground'/>
+              ) : 'Pon tu productito!!!'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar Producto</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleEdit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-title">Nombre del producto</Label>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={handleTitleChange}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-link">Link del producto</Label>
+              <Input
+                id="edit-link"
+                value={link}
+                onChange={handleLinkChange}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-priority">Prioridad</Label>
+              <select 
+                id="edit-priority"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as 'Alta' | 'no tanta' | 'poquillo')}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
+              >
+                <option value="Alta">Alta</option>
+                <option value="no tanta">No tanta</option>
+                <option value="poquillo">Poquillo</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader className="animate-spin" />
+              ) : (
+                'Guardar cambios'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
       <div className="max-w-[1200px] mx-auto mt-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
           {products.map((product) => (
@@ -239,23 +354,36 @@ export default function Home() {
                 className="w-full aspect-square object-cover"
               />
               <div className="p-4 flex justify-between items-center">
-                <h3 className="text-xl font-bold mb-2">{product.title}</h3>
-                <div className="flex gap-4 items-center">
+                <div>
+                  <h3 className="text-xl font-bold mb-2">{product.title}</h3>
+                  <span className={`px-2 py-1 rounded-full text-sm ${
+                    product.priority === 'Alta' 
+                      ? 'bg-red-100 text-red-800' 
+                      : product.priority === 'no tanta'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-green-100 text-green-800'
+                  }`}>
+                    {product.priority}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   <a 
                     href={product.productURL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      window.open(product.productURL, '_blank');
-                    }}
                   >
                     Ver Producto
                   </a>
                   <button
+                    onClick={() => openEditDialog(product)}
+                    className="p-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <MoreVertical size={20} />
+                  </button>
+                  <button
                     onClick={() => deleteProduct(product.$id, product.imageId)}
-                    className="p-2 text-red-500 hover:text-red-700 transition-colors"
+                    className="p-2 text-red-500 hover:text-red-700"
                   >
                     <TrashIcon size={20} />
                   </button>
