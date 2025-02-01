@@ -1,6 +1,6 @@
 'use client';
 
-import { Client, Storage, Databases, ID, Account, Models } from 'appwrite';
+import { Client, Storage, Databases, ID, Models } from 'appwrite';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -16,8 +16,6 @@ interface Product {
   imageId: string;
   priority: 'Alta' | 'no tanta' | 'poquillo';
 }
-
-type AppwriteUser = Models.User<Models.Preferences>;
 
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
