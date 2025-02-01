@@ -15,7 +15,7 @@ interface Product {
   imageId: string;
 }
 
-interface AppwriteUser extends Models.User<Models.Preferences> {}
+type AppwriteUser = Models.User<Models.Preferences>;
 
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -140,7 +140,12 @@ export default function Home() {
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
         process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!
       );
-      setProducts(response.documents);
+      setProducts(response.documents.map(doc => ({
+        $id: doc.$id,
+        title: doc.title as string,
+        productURL: doc.link as string,
+        imageId: doc.imageId as string
+      })));
     } catch (error) {
       console.error('Error fetching products:', error);
     }
