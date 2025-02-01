@@ -24,7 +24,6 @@ export default function Home() {
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [user, setUser] = useState<AppwriteUser | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [priority, setPriority] = useState<'Alta' | 'no tanta' | 'poquillo'>('Alta');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -36,33 +35,6 @@ export default function Home() {
 
   const databases = new Databases(client);
   const storage = new Storage(client);
-  const account = new Account(client);
-
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      const session = await account.get();
-      setUser(session);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const login = async () => {
-    try {
-      await account.createEmailPasswordSession(
-        'debanhimedina2005@gmail.com',
-        'Debanhi123'
-      );
-      await checkUser();
-      console.log('Login successful');
-    } catch (error) {
-      console.error('Login failed:', error);
-    }
-  };
 
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
