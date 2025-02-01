@@ -1,6 +1,6 @@
 'use client';
 
-import { Client, Storage, Databases, ID, Models } from 'appwrite';
+import { Client, Storage, Databases, ID } from 'appwrite';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -190,10 +190,12 @@ export default function Home() {
   };
 
   return (
-    <div className='w-[1200px] mx-auto p-10'>
-      <Button className='flex ' onClick={() => setIsDialogOpen(true)}>Agregar</Button>
+    <div className='w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-10'>
+      <Button className='w-full sm:w-auto mb-6' onClick={() => setIsDialogOpen(true)}>
+        Agregar
+      </Button>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+      <DialogContent className="w-[95vw] max-w-[500px] p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Agrega tu productito!!!</DialogTitle>
             <DialogDescription>Agrega tu productito a tu whishlist chiquita preciosa hermosa</DialogDescription>
@@ -263,7 +265,7 @@ export default function Home() {
         </DialogContent>
       </Dialog>
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-      <DialogContent>
+      <DialogContent className="w-[95vw] max-w-[500px] p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Editar Producto</DialogTitle>
         </DialogHeader>
@@ -312,56 +314,56 @@ export default function Home() {
       </DialogContent>
     </Dialog>
       <div className="max-w-[1200px] mx-auto mt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
-          {products.map((product) => (
-            <div 
-              key={product.$id} 
-              className="border rounded-lg overflow-hidden shadow-lg bg-white"
-            >
-              <img
-                src={`${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${product.imageId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`}
-                alt={product.title}
-                className="w-full aspect-square object-cover"
-              />
-              <div className="p-4 flex justify-between items-center">
-                <div>
-                  <h3 className="text-xl font-bold mb-2">{product.title}</h3>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    product.priority === 'Alta' 
-                      ? 'bg-red-100 text-red-800' 
-                      : product.priority === 'no tanta'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}>
-                    {product.priority}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+        {products.map((product) => (
+          <div 
+            key={product.$id} 
+            className="border rounded-lg overflow-hidden shadow-lg bg-white"
+          >
+            <img
+              src={`${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${product.imageId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`}
+              alt={product.title}
+              className="w-full aspect-square object-cover"
+            />
+            <div className="p-4">
+              <h3 className="text-lg sm:text-xl font-bold mb-2">{product.title}</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <span className={`px-2 py-1 rounded-full text-sm inline-block ${
+                  product.priority === 'Alta' 
+                    ? 'bg-red-100 text-red-800' 
+                    : product.priority === 'no tanta'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {product.priority}
+                </span>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0">
                   <a 
                     href={product.productURL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                    className="text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
                   >
                     Ver Producto
                   </a>
                   <button
                     onClick={() => openEditDialog(product)}
-                    className="p-2 text-gray-500 hover:text-gray-700"
+                    className="p-1.5 sm:p-2 text-gray-500 hover:text-gray-700"
                   >
-                    <MoreVertical size={20} />
+                    <MoreVertical size={18} />
                   </button>
                   <button
                     onClick={() => deleteProduct(product.$id, product.imageId)}
-                    className="p-2 text-red-500 hover:text-red-700"
+                    className="p-1.5 sm:p-2 text-red-500 hover:text-red-700"
                   >
-                    <TrashIcon size={20} />
+                    <TrashIcon size={18} />
                   </button>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
       </div>
     </div>
   );
