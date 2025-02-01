@@ -1,6 +1,6 @@
 'use client';
 
-import { Client, Storage, Databases, ID, Account } from 'appwrite';
+import { Client, Storage, Databases, ID, Account, Models } from 'appwrite';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,13 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TrashIcon } from 'lucide-react';
 
+interface Product {
+  $id: string;
+  title: string;
+  productURL: string;
+  imageId: string;
+}
+
+interface AppwriteUser extends Models.User<Models.Preferences> {}
+
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [user, setUser] = useState<AppwriteUser | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
 
 
   const client = new Client()
@@ -34,7 +43,7 @@ export default function Home() {
       const session = await account.get();
       setUser(session);
     } catch (error) {
-      console.error('Not logged in');
+      console.log(error);
     }
   };
 
