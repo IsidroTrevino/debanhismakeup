@@ -1,101 +1,256 @@
-import Image from "next/image";
+'use client';
+
+import { Client, Storage, Databases, ID, Account } from 'appwrite';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TrashIcon } from 'lucide-react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [link, setLink] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [products, setProducts] = useState<any[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+
+  const client = new Client()
+    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+
+  const databases = new Databases(client);
+  const storage = new Storage(client);
+  const account = new Account(client);
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const session = await account.get();
+      setUser(session);
+    } catch (error) {
+      console.error('Not logged in');
+    }
+  };
+
+  const login = async () => {
+    try {
+      await account.createEmailPasswordSession(
+        'debanhimedina2005@gmail.com',
+        'Debanhi123'
+      );
+      await checkUser();
+      console.log('Login successful');
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+
+  const [date, setDate] = useState('');
+  const [error, setError] = useState('');
+  
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDate(e.target.value);
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate date
+    const correctDate = '2024-05-03';
+    if (date !== correctDate) {
+      setError('MAL GEI');
+      return;
+    }
+    e.preventDefault();
+      
+    if (!user) {
+      await login();
+    }
+      
+    try {
+      // Upload file
+      const fileUpload = await storage.createFile(
+        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+        ID.unique(),
+        file!
+      );
+  
+      const document = await databases.createDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
+        ID.unique(),
+        {
+          title: title,
+          link: link,
+          imageId: fileUpload.$id
+        }
+      );
+
+      await fetchProducts();
+  
+      console.log('Document created:', document);
+  
+      setTitle('');
+      setLink('');
+      setFile(null);
+      
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error creating document:', error);
+    }
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  };
+
+  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLink(e.target.value);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+  
+  const fetchProducts = async () => {
+    try {
+      const response = await databases.listDocuments(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!
+      );
+      setProducts(response.documents);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const deleteProduct = async (productId: string, imageId: string) => {
+    try {
+      await storage.deleteFile(
+        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID!,
+        imageId
+      );
+      
+      await databases.deleteDocument(
+        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
+        productId
+      );
+  
+      await fetchProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+    }
+  };
+
+  return (
+    <div className='w-[1200px] mx-auto p-10'>
+      <Button className='flex ' onClick={() => setIsDialogOpen(true)}>Agregar</Button>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agrega tu productito!!!</DialogTitle>
+            <DialogDescription>Agrega tu productito a tu whishlist chiquita preciosa hermosa</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Nombre del producto</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={handleTitleChange}
+                  placeholder="Nombresito"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="link">Link del producto</Label>
+                <Input
+                  id="link"
+                  value={link}
+                  onChange={handleLinkChange}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="image">Sube tu imagensitaaaa!!!</Label>
+                <Input
+                  id="image"
+                  type="file"
+                  onChange={handleFileChange}
+                  accept="image/*"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="date">Fecha de nuestro casamiento oficial (PARA COMPROBAR QUE SI SOS VOS)</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={handleDateChange}
+                required
+              />
+              {error && <p className="text-red-500 text-sm">{error}</p>}
+            </div>
+            <DialogFooter className='pt-4'>
+              <Button type="submit">Pon tu productito!!!</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <div className="max-w-[1200px] mx-auto mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4">
+          {products.map((product) => (
+            <div 
+              key={product.$id} 
+              className="border rounded-lg overflow-hidden shadow-lg bg-white"
+            >
+              <img
+                src={`${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${product.imageId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`}
+                alt={product.title}
+                className="w-full aspect-square object-cover"
+              />
+              <div className="p-4 flex justify-between items-center">
+                <h3 className="text-xl font-bold mb-2">{product.title}</h3>
+                <div className="flex gap-4 items-center">
+                  <a 
+                    href={product.productURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.open(product.productURL, '_blank');
+                    }}
+                  >
+                    Ver Producto
+                  </a>
+                  <button
+                    onClick={() => deleteProduct(product.$id, product.imageId)}
+                    className="p-2 text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <TrashIcon size={20} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
