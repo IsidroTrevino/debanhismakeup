@@ -1,12 +1,15 @@
 'use client';
 
-import { Client, Storage, Databases, ID } from 'appwrite';
+import { Client, Storage, Databases, ID, Query } from 'appwrite';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogFooter, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader, TrashIcon, MoreVertical } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 interface Product {
@@ -15,7 +18,18 @@ interface Product {
   productURL: string;
   imageId: string;
   priority: 'Alta' | 'no tanta' | 'poquillo';
+  comprado?: boolean;
 }
+
+type PriorityFilter = 'all' | 'Alta' | 'no tanta' | 'poquillo';
+
+
+const client = new Client()
+  .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+
+const databases = new Databases(client);
+const storage = new Storage(client);
 
 export default function Home() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -25,20 +39,17 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [priority, setPriority] = useState<'Alta' | 'no tanta' | 'poquillo'>('Alta');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [comprado, setComprado] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
 
-  const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
-
-  const databases = new Databases(client);
-  const storage = new Storage(client);
 
   const [date, setDate] = useState('');
   const [error, setError] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const router = useRouter();
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDate(e.target.value);
@@ -78,7 +89,8 @@ export default function Home() {
           title,
           link,
           imageId: fileUpload.$id,
-          priority
+          priority,
+          comprado: false,
         }
       );
 
@@ -112,7 +124,8 @@ export default function Home() {
         {
           title,
           link,
-          priority
+          priority,
+          comprado,
         }
       );
   
@@ -131,6 +144,7 @@ export default function Home() {
     setTitle(product.title);
     setLink(product.productURL);
     setPriority(product.priority);
+    setComprado(product.comprado!);
     setIsEditDialogOpen(true);
   };
 
@@ -156,19 +170,29 @@ export default function Home() {
     try {
       const response = await databases.listDocuments(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
+        [
+          Query.equal('comprado',false)
+        ],
       );
+
       setProducts(response.documents.map(doc => ({
         $id: doc.$id,
         title: doc.title as string,
         productURL: doc.link as string,
         imageId: doc.imageId as string,
-        priority: doc.priority as 'Alta' | 'no tanta' | 'poquillo'
+        priority: doc.priority as 'Alta' | 'no tanta' | 'poquillo',
+        comprado: doc.comprado as boolean,
       })));
     } catch (error) {
       console.error('Error fetching products:', error);
     }
   };
+
+  const filteredProducts = products.filter(product => {
+    if (priorityFilter === 'all') return true;
+    return product.priority === priorityFilter;
+  });
 
   const deleteProduct = async (productId: string, imageId: string) => {
     try {
@@ -190,10 +214,27 @@ export default function Home() {
   };
 
   return (
-    <div className='w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-10'>
-      <Button className='w-full sm:w-auto mb-6' onClick={() => setIsDialogOpen(true)}>
-        Agregar
-      </Button>
+    <div className='w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-10 pt-6'>
+      <div className='flex justify-between items-center'>
+        <Button className='w-full sm:w-auto mb-6' onClick={() => setIsDialogOpen(true)}>
+          Agregar
+        </Button>
+        <Button onClick={() => router.push('/comprados')}>Ver comprados!!!</Button>
+      </div>
+      <div className="mb-6">
+          <Select value={priorityFilter} onValueChange={(value: PriorityFilter) => setPriorityFilter(value)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtrar por prioridad" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las prioridades</SelectItem>
+              <SelectItem value="Alta">Alta</SelectItem>
+              <SelectItem value="no tanta">No tanta</SelectItem>
+              <SelectItem value="poquillo">Poquillo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogContent className="w-[95vw] max-w-[500px] p-4 sm:p-6">
           <DialogHeader>
@@ -300,6 +341,17 @@ export default function Home() {
                 <option value="poquillo">Poquillo</option>
               </select>
             </div>
+
+            <div className="grid gap-2">
+              <div className="flex items-center space-x-2">
+              <Switch 
+                  id="comprado-bool" 
+                  checked={comprado} 
+                  onCheckedChange={setComprado}
+                />
+                <Label htmlFor="comprado-bool">Comprado</Label>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
@@ -315,7 +367,7 @@ export default function Home() {
     </Dialog>
       <div className="max-w-[1200px] mx-auto mt-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-        {products.map((product) => (
+        {filteredProducts.map((product) => (
           <div 
             key={product.$id} 
             className="border rounded-lg overflow-hidden shadow-lg bg-white"
